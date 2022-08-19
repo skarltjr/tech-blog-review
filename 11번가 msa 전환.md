@@ -82,3 +82,15 @@ hystrix command를 호출할때 벌어지는 일
 - 만약 너무 큰 묶음 단위로 적용하면?
   - 크게 상관없는 매서드로 인해 묶음에 포함된 모든 매서드가 차단된다.
 ```
+### Fallback
+```
+fallback으로 지정된 매서드는 다음 경우에 원본 매서드 대신 실행된다
+- circuit open
+- any exception ( HystrixBadRequestException 제외 - 사용자의 실수로 발생하는 예외를 HystrixBadRequestException으로 감싸고 이는 서버의 문제가 아니니까 제외시킨다)
+- semaphore / threadpool rejection
+- timeout
+```
+```
+⭐️ 조심해라 fallback은 잘못 사용하면 문제된다 / 우리 에러를 감춰버리는 문제가 될 수 있다
+```
+
