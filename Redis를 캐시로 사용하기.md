@@ -66,3 +66,38 @@ in-memory 데이터 저장소 -> 모든 데이터를 메모리에 올려두기�
 변경 및 삭제가 발생한 데이터는 그때그때 바로 캐시에도 업데이트
 - 캐시와 디비 데이터 정합성을 맞추고자
 ```
+
+### 장애를 막기위한 기본 설정
+1. stop-writes-on-bgsave-error => no
+```
+rdb 파일 저장 실패시 redis로 모든 write불가능
+기본 yes
+```
+2. maxmemory-policy = allkeys-lru
+```
+redis를 캐시로 사용할땐 expire-time 설정을 해줘야한다
+그런데 추가로 메모리가 다 찼을때 어떻게 동작할지 설정도 필요하다
+
+기본은 no-eviction으로 기존 데이터를 삭제하지 않고 그로인해 메모리가 다 차면 사용 불가능
+
+valotile-lru : expire time이 설정된 키값을 대상으로만 lru로 지운다 -> 실수로 expire time 설정이 안되어있으면 계속 쌓인다
+allkeys-lru : 모든 키를 대상으로 lru로 지운다 ⭐️
+
+```
+3. Cache Stampede / expire-time을 너무 작게 설정하는경우
+- https://meetup.toast.com/posts/251
+```
+여러개의 서버가 레디스와 통신하는 상황에서 expire-time이 너무 짧다고 생각해보자
+그럼 그 만큼 자주 여러 서버가 디비로 데이터를 읽으러가고 또 해당 내용을 캐시에 다시 쓰는 행위가 빈번할것
+만약 여러개의 서버가 같은 키를 바라보고있다가 키가 만료되면?
+동시에 여러 서버가 디비에 접근해서 읽는 / duplicate read
+이 후 동시에 여러 서버가 레디스에 데이터 업데이트하는 / duplicate write가 발생
+-> 엄청난 성능 이슈
+
+참고
+이 현상을 해결하기 위해 PER(Probablistic Early Recomputation) 알고리즘을 도입할 수 있습니다.
+이 알고리즘은 키의 TTL이 실제로 만료되기 전에 일정 확률로 캐시를 갱신하는 방법입니다. 
+데이터베이스에서 키가 완전히 만료되기 전에 데이터를 먼저 읽어오게 함으로써 Cache Stampede 현상을 막을 수 있습니다.
+```
+
+
